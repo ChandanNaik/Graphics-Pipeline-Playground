@@ -34,6 +34,20 @@ const modeBuilders: Record<RenderMode, (params: BuildModeParams) => ModeBuildRes
   frustum: buildFallbackMode,
 };
 
+function getMaxOrbitDistance(mode: RenderMode, objectCount: number): number {
+  if (mode !== 'naive') {
+    return 25;
+  }
+
+  const side = Math.ceil(Math.cbrt(objectCount));
+  const spacing = 4;
+  const halfExtent = ((side - 1) * spacing) / 2;
+  const boundingRadius = Math.sqrt(3 * halfExtent * halfExtent) + 1;
+
+  // Keep room to orbit, but cap zooming out so cubes remain readable.
+  return Math.max(25, boundingRadius * 3);
+}
+
 export function SceneCanvas({ mode, objectCount, animate }: SceneCanvasProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
@@ -62,6 +76,7 @@ export function SceneCanvas({ mode, objectCount, animate }: SceneCanvasProps) {
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.08;
+    controls.maxDistance = getMaxOrbitDistance(mode, objectCount);
     controls.target.set(0, 0, 0);
     controls.update();
 
