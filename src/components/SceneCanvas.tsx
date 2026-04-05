@@ -1,8 +1,13 @@
-import { useEffect, useRef } from 'react';
-import * as THREE from 'three';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { buildNaiveMode } from './scene/buildNaiveMode';
-import type { BuildModeParams, ModeBuildResult, RenderMode } from './scene/types';
+import { useEffect, useRef } from "react";
+import * as THREE from "three";
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import { buildNaiveMode } from "./scene/buildNaiveMode";
+import { buildInstanceMode } from "./scene/buildInstancedMode";
+import type {
+  BuildModeParams,
+  ModeBuildResult,
+  RenderMode,
+} from "./scene/types";
 
 type SceneCanvasProps = {
   mode: RenderMode;
@@ -12,7 +17,7 @@ type SceneCanvasProps = {
 
 function buildFallbackMode({ scene }: BuildModeParams): ModeBuildResult {
   const geometry = new THREE.BoxGeometry(1, 1, 1);
-  const material = new THREE.MeshBasicMaterial({ color: 'blue' });
+  const material = new THREE.MeshBasicMaterial({ color: "blue" });
   const cube = new THREE.Mesh(geometry, material);
   scene.add(cube);
 
@@ -26,16 +31,19 @@ function buildFallbackMode({ scene }: BuildModeParams): ModeBuildResult {
   };
 }
 
-const modeBuilders: Record<RenderMode, (params: BuildModeParams) => ModeBuildResult> = {
+const modeBuilders: Record<
+  RenderMode,
+  (params: BuildModeParams) => ModeBuildResult
+> = {
   naive: buildNaiveMode,
-  instanced: buildFallbackMode,
+  instanced: buildInstanceMode,
   merged: buildFallbackMode,
   lod: buildFallbackMode,
   frustum: buildFallbackMode,
 };
 
 function getMaxOrbitDistance(mode: RenderMode, objectCount: number): number {
-  if (mode !== 'naive') {
+  if (mode !== "naive" && mode !== "instanced") {
     return 25;
   }
 
@@ -56,23 +64,27 @@ export function SceneCanvas({ mode, objectCount, animate }: SceneCanvasProps) {
     const host = hostRef.current;
     if (!host) return;
 
-      // 1. Initialize the renderer
+    // 1. Initialize the renderer
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setSize(host.clientWidth, host.clientHeight);
     host.appendChild(renderer.domElement);
 
-      // 2. Scene + Camera
+    // 2. Scene + Camera
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color('#0f172a');
+    scene.background = new THREE.Color("#0f172a");
 
-    const camera = new THREE.PerspectiveCamera(60, host.clientWidth / host.clientHeight, 0.1, 1000);
+    const camera = new THREE.PerspectiveCamera(
+      60,
+      host.clientWidth / host.clientHeight,
+      0.1,
+      1000,
+    );
     camera.position.set(100, 0, 0);
     camera.lookAt(0, 0, 0);
 
-
-      // 2.1 OrbitControls
+    // 2.1 OrbitControls
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.08;
@@ -82,9 +94,8 @@ export function SceneCanvas({ mode, objectCount, animate }: SceneCanvasProps) {
 
     // 3. Build meshes for the selected render mode.
     const modeResult = modeBuilders[mode]({ scene, objectCount });
-    const cubes = modeResult.animatedMeshes;
 
-      // 4. Animation loop
+    // 4. Animation loop
     let rafId = 0;
     let lastLog = performance.now();
     let prevFrameMs = performance.now();
@@ -99,13 +110,12 @@ export function SceneCanvas({ mode, objectCount, animate }: SceneCanvasProps) {
       frameTimes.push(deltaMs);
       if (frameTimes.length > maxSamples) frameTimes.shift();
 
-      const avgFrameMs = frameTimes.reduce((a, b) => a + b, 0) / frameTimes.length;
+      const avgFrameMs =
+        frameTimes.reduce((a, b) => a + b, 0) / frameTimes.length;
       const fps = avgFrameMs > 0 ? 1000 / avgFrameMs : 0;
 
       if (animate) {
-        cubes.forEach((cube) => {
-          cube.rotation.y += 0.01;
-        });
+        modeResult.animationFrame?.(deltaMs);
       }
 
       controls.update();
@@ -126,7 +136,7 @@ export function SceneCanvas({ mode, objectCount, animate }: SceneCanvasProps) {
     };
     rafId = requestAnimationFrame(render);
 
-      // 5. Resize handler
+    // 5. Resize handler
 
     const onResize = () => {
       const width = host.clientWidth;
@@ -136,11 +146,11 @@ export function SceneCanvas({ mode, objectCount, animate }: SceneCanvasProps) {
       camera.updateProjectionMatrix();
       renderer.setSize(width, height);
     };
-    window.addEventListener('resize', onResize);
+    window.addEventListener("resize", onResize);
 
     return () => {
       window.cancelAnimationFrame(rafId);
-      window.removeEventListener('resize', onResize);
+      window.removeEventListener("resize", onResize);
 
       modeResult.dispose();
       controls.dispose();
