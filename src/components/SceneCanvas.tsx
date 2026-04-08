@@ -3,6 +3,8 @@ import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { buildNaiveMode } from "./scene/buildNaiveMode";
 import { buildInstanceMode } from "./scene/buildInstancedMode";
+import { buildMergedMode } from "./scene/buildMergedMode";
+
 import type {
   BuildModeParams,
   ModeBuildResult,
@@ -37,13 +39,13 @@ const modeBuilders: Record<
 > = {
   naive: buildNaiveMode,
   instanced: buildInstanceMode,
-  merged: buildFallbackMode,
+  merged: buildMergedMode,
   lod: buildFallbackMode,
   frustum: buildFallbackMode,
 };
 
 function getMaxOrbitDistance(mode: RenderMode, objectCount: number): number {
-  if (mode !== "naive" && mode !== "instanced") {
+  if (mode !== "naive" && mode !== "instanced" && mode !== "merged") {
     return 25;
   }
 
