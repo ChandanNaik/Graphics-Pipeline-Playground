@@ -4,6 +4,7 @@ import type { BuildModeParams, ModeBuildResult } from "./types";
 export function buildInstanceMode({
   scene,
   objectCount,
+  camera,
 }: BuildModeParams): ModeBuildResult {
   const geometry = new THREE.BoxGeometry(1, 1, 1);
   const material = new THREE.MeshBasicMaterial({ color: 0xffffff });
@@ -20,6 +21,9 @@ export function buildInstanceMode({
   const angles = new Float32Array(cubeCount);
   const colors = new Float32Array(cubeCount * 3);
   const color = new THREE.Color();
+
+  const frustum = new THREE.Frustum();
+  const projScreenMatrix = new THREE.Matrix4();
 
   for (let i = 0; i < cubeCount; i++) {
     const x = i % side;
@@ -61,20 +65,31 @@ export function buildInstanceMode({
   const instancedAnimationFrame = (deltaMs: number) => {
     const deltaSec = deltaMs / 1000;
     const speed = 1.2;
-
+    if (!camera) {
+      return;
+    }
+    camera.updateMatrixWorld();
+    projScreenMatrix.multiplyMatrices(
+      camera.projectionMatrix,
+      camera.matrixWorldInverse,
+    );
+    frustum.setFromProjectionMatrix(projScreenMatrix);
+    let visibleCount = 0;
     for (let i = 0; i < cubeCount; i++) {
       angles[i] += speed * deltaSec;
-
       instancedCube.position.set(
         basePositions[i * 3],
         basePositions[i * 3 + 1],
         basePositions[i * 3 + 2],
       );
+      if (!frustum.containsPoint(instancedCube.position)) continue;
       instancedCube.rotation.set(0, angles[i], 0);
       instancedCube.scale.set(1, 1, 1);
       instancedCube.updateMatrix();
-      instancedMesh.setMatrixAt(i, instancedCube.matrix);
+      instancedMesh.setMatrixAt(visibleCount, instancedCube.matrix);
+      visibleCount++;
     }
+    instancedMesh.count = visibleCount;
     instancedMesh.instanceMatrix.needsUpdate = true;
   };
 

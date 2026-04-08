@@ -10,6 +10,7 @@ import type {
   ModeBuildResult,
   RenderMode,
 } from "./scene/types";
+import { buildFrustumMode } from "./scene/buildFrustumMode";
 
 type SceneCanvasProps = {
   mode: RenderMode;
@@ -41,11 +42,16 @@ const modeBuilders: Record<
   instanced: buildInstanceMode,
   merged: buildMergedMode,
   lod: buildFallbackMode,
-  frustum: buildFallbackMode,
+  frustum: buildFrustumMode,
 };
 
 function getMaxOrbitDistance(mode: RenderMode, objectCount: number): number {
-  if (mode !== "naive" && mode !== "instanced" && mode !== "merged") {
+  if (
+    mode !== "naive" &&
+    mode !== "instanced" &&
+    mode !== "merged" &&
+    mode !== "frustum"
+  ) {
     return 25;
   }
 
@@ -95,7 +101,7 @@ export function SceneCanvas({ mode, objectCount, animate }: SceneCanvasProps) {
     controls.update();
 
     // 3. Build meshes for the selected render mode.
-    const modeResult = modeBuilders[mode]({ scene, objectCount });
+    const modeResult = modeBuilders[mode]({ scene, objectCount, camera });
 
     // 4. Animation loop
     let rafId = 0;

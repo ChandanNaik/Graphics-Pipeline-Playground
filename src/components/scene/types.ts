@@ -11,4 +11,5 @@ export type ModeBuildResult = {
 export type BuildModeParams = {
   scene: THREE.Scene;
   objectCount: number;
+  camera?: THREE.PerspectiveCamera;
 };
